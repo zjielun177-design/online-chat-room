@@ -1,7 +1,6 @@
 package com.chat.util;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -38,13 +37,12 @@ public class TokenUtil {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
-        JwtBuilder builder = Jwts.builder()
+        return Jwts.builder()
                 .claims(claims)
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(key, SignatureAlgorithm.HS256);
-
-        return builder.compact();
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
     }
 
     /**
@@ -52,10 +50,10 @@ public class TokenUtil {
      */
     public static boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
             return false;
@@ -67,10 +65,10 @@ public class TokenUtil {
      */
     public static Long getUserIdFromToken(String token) {
         try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token)
+                    .parseSignedClaims(token)
                     .getPayload();
 
             Integer userId = (Integer) claims.get("userId");
@@ -85,10 +83,10 @@ public class TokenUtil {
      */
     public static String getUsernameFromToken(String token) {
         try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token)
+                    .parseSignedClaims(token)
                     .getPayload();
 
             return (String) claims.get("username");
