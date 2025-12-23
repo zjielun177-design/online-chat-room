@@ -59,15 +59,15 @@ const login = async () => {
       password: form.password
     })
 
-    store.commit('login', {
-      user: response.user,
-      token: response.token
-    })
+    store.commit('setToken', response.data.token)
+    store.commit('setUser', response.data.user)
 
     ElMessage.success('登录成功')
     router.push('/chat')
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '登录失败')
+    console.error('登录错误:', error)
+    const errorMsg = error.message || error?.data?.message || '登录失败'
+    ElMessage.error(errorMsg)
   }
 }
 </script>

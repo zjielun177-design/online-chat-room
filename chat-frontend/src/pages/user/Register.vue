@@ -73,8 +73,13 @@ const register = async () => {
     return
   }
 
+  if (form.password.length < 6) {
+    ElMessage.error('密码长度不能少于6位')
+    return
+  }
+
   try {
-    await request.post('/auth/register', {
+    const response = await request.post('/auth/register', {
       username: form.username,
       email: form.email,
       password: form.password
@@ -83,6 +88,7 @@ const register = async () => {
     ElMessage.success('注册成功，请登录')
     router.push('/login')
   } catch (error) {
+    console.error('注册错误:', error)
     ElMessage.error(error.response?.data?.message || '注册失败')
   }
 }

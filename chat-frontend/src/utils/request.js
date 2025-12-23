@@ -24,6 +24,10 @@ request.interceptors.response.use(response => {
     localStorage.removeItem('token')
     window.location.href = '/login'
   }
+  // 确保 error 对象有正确的结构供外层使用
+  if (error.response && error.response.data) {
+    return Promise.reject(error.response.data)
+  }
   return Promise.reject(error)
 })
 
