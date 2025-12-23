@@ -85,11 +85,26 @@ const register = async () => {
       password: form.password
     })
 
-    ElMessage.success('注册成功，请登录')
-    router.push('/login')
+    console.log('注册响应:', response)
+
+    // response 是 ApiResponse 对象: { code, message, data: { token, user } }
+    if (response.code === 200) {
+      ElMessage.success('注册成功，请登录')
+      router.push('/login')
+    } else {
+      ElMessage.error(response.message || '注册失败')
+    }
   } catch (error) {
     console.error('注册错误:', error)
-    ElMessage.error(error.response?.data?.message || '注册失败')
+    let errorMsg = '注册失败'
+
+    if (error.message) {
+      errorMsg = error.message
+    } else if (typeof error === 'object' && error.message) {
+      errorMsg = error.message
+    }
+
+    ElMessage.error(errorMsg)
   }
 }
 </script>

@@ -1,5 +1,6 @@
 package com.chat.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -13,9 +14,12 @@ import com.chat.websocket.ChatWebSocketServer;
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
+    @Autowired
+    private ChatWebSocketServer chatWebSocketServer;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(new ChatWebSocketServer(), "/ws/chat")
+        registry.addHandler(chatWebSocketServer, "/ws/chat")
                 .setAllowedOrigins("*");
     }
 

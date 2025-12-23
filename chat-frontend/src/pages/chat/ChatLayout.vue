@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import websocket from '../../utils/websocket'
@@ -70,8 +70,6 @@ const currentChannel = computed(() => store.state.currentChannel)
 const messages = computed(() => store.state.messages)
 const user = computed(() => store.state.user)
 
-import { ref } from 'vue'
-
 const selectChannel = (channel) => {
   store.commit('setCurrentChannel', channel)
   loadMessages(channel.id)
@@ -80,9 +78,12 @@ const selectChannel = (channel) => {
 const loadMessages = async (channelId) => {
   try {
     const response = await request.get(`/message/channel/${channelId}`)
+    // response 是 ApiResponse 对象: { code, message, data: [...] }
+    console.log('消息API响应:', response)
     store.commit('setMessages', response.data || [])
   } catch (error) {
     console.error('加载消息失败:', error)
+    ElMessage.error('加载消息失败')
   }
 }
 
@@ -113,37 +114,61 @@ const logout = async () => {
     console.error('登出错误:', error)
   }
 
-  store.commit('logout')
+  store.commit('setToken', null)
+  store.commit('setUser', null)
   websocket.close()
   router.push('/login')
 }
 
 const formatTime = (time) => {
   if (!time) return ''
-  const date = new Date(time)
-  return date.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  try {
+    const date = new Date(time)
+    return date.toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (e) {
+    return time
+  }
 }
 
 const loadChannels = async () => {
   try {
+    console.log('开始加载频道...');
     const response = await request.get('/channel/list')
-    store.commit('setChannels', response.data || [])
+    // response 是 ApiResponse 对象: { code, message, data: [...] }
+    console.log('频道API原始响应:', response)
+    console.log('频道API响应类型:', typeof response)
+    console.log('是否有 data 字段:', 'data' in response)
+    const channelList = response.data || []
+    console.log('提取的频道列表:', channelList)
+    store.commit('setChannels', channelList)
+    console.log('Vuex 中的频道已更新:', store.state.channels)
+    // 如果有频道，自动选择第一个
+    if (channelList && channelList.length > 0) {
+      console.log('自动选择第一个频道:', channelList[0].name)
+      selectChannel(channelList[0])
+    } else {
+      console.warn('频道列表为空!')
+    }
   } catch (error) {
     console.error('加载频道失败:', error)
+    console.error('错误详情:', error.message)
+    ElMessage.error('加载频道失败')
   }
 }
 
+// 设置WebSocket消息处理器
 websocket.onMessage = (message) => {
-  if (message.type === 'group_message') {
+  console.log('收到WebSocket消息:', message)
+  if (message.type === 'group_message' && message.channelId === currentChannel.value?.id) {
     store.commit('addMessage', {
-      id: Date.now(),
+      id: message.id,
       senderId: message.senderId,
       senderName: message.senderName,
       content: message.content,
-      sendTime: new Date().toISOString(),
+      sendTime: message.sendTime,
       channelId: message.channelId
     })
   }

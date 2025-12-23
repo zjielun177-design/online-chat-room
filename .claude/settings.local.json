@@ -5,7 +5,8 @@
       "Bash(git commit:*)",
       "Bash(timeout 15 java:*)",
       "Bash(timeout 15 mvn spring-boot:run:*)",
-      "Bash(mvn clean install:*)"
+      "Bash(mvn clean install:*)",
+      "Bash(cat:*)"
     ]
   }
 }

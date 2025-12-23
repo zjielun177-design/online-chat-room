@@ -1,7 +1,7 @@
 class WebSocketUtil {
   constructor() {
     this.ws = null
-    this.url = `ws://${window.location.hostname}:8080/api/ws/chat`
+    this.url = `ws://${window.location.hostname}:8080/ws/chat`
     this.reconnectAttempts = 0
     this.reconnectDelay = 1000
   }

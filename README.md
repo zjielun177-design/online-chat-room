@@ -1,86 +1,313 @@
-# 网络聊天平台需求文档
+# 网络聊天平台 - Online Chat Room
 
-## 功能需求
+完整的实时聊天应用，使用Vue3 + Spring Boot + MySQL + WebSocket实现。
 
-### 1. 用户管理
-- **注册功能**：用户可以使用邮箱、用户名和密码注册账户。
-- **登录功能**：用户通过邮箱/用户名和密码登录系统。
-- **登出功能**：用户可以登出，结束当前会话。
-- **编辑个人资料**：用户可以编辑自己的个人信息，如头像、昵称等。
+## 项目完成状态
 
-### 2. 聊天管理
-- **聊天室选择**：用户可以选择加入不同的聊天室。
-- **群聊功能**：用户可以在聊天室内与其他用户进行实时群聊。
-- **私聊功能**：用户可以与聊天室内的在线用户进行私聊。
-- **消息发送与接收**：使用 WebSocket 实现实时消息传递，群聊与私聊分开管理。
+✅ **已完成功能：**
+- 用户注册和登录（JWT认证）
+- 频道管理（创建、加入、离开、删除频道）
+- 实时群组消息（WebSocket）
+- 私聊消息（WebSocket）
+- 消息历史查询（REST API）
+- 用户认证和授权
+- 全局异常处理
 
-### 3. 聊天记录
-- **聊天记录存储**：所有的群聊和私聊消息都会存储在数据库中。
-- **查看聊天记录**：用户可以查看自己的聊天记录，包括群聊和私聊。
-  
-## 技术需求
+## 快速开始
 
-- **前端**：Vue3，使用 Vue Router 实现页面跳转，Vuex 管理状态。
-- **后端**：Spring Boot 2.6，JDK 19.0.2，使用 MySQL 连接数据库。
-- **数据库**：MySQL 8.x，设计合适的表结构。
-- **WebSocket**：使用 Spring Boot WebSocket 实现实时通信。
-- **依赖**：Spring Boot Starter, WebSocket, MySQL Driver, JPA/Hibernate。
+### 前置要求
 
-## 数据库设计
+- JDK 19+
+- Maven 3.6+
+- MySQL 8.0+
+- Node.js 16+ (用于前端开发)
 
-1. **用户表** (`users`)
-   - id: 主键，自增
-   - username: 唯一
-   - email: 唯一
-   - password: 加密密码
-   - nickname: 昵称
-   - avatar: 头像URL
+### 1. 数据库配置
 
-2. **聊天室表** (`chat_rooms`)
-   - id: 主键，自增
-   - name: 聊天室名称
-   - description: 聊天室描述
+```bash
+# 创建数据库
+mysql -u root -p < chat-backend/src/main/resources/db/schema.sql
 
-3. **聊天室成员表** (`chat_room_members`)
-   - user_id: 外键，关联用户表
-   - chat_room_id: 外键，关联聊天室表
+# 初始化测试数据
+mysql -u root -p chat < chat-backend/src/main/resources/db/data.sql
+```
 
-4. **消息表** (`messages`)
-   - id: 主键，自增
-   - sender_id: 外键，关联用户表
-   - receiver_id: 外键，关联用户表（私聊时使用）
-   - chat_room_id: 外键，关联聊天室表（群聊时使用）
-   - message: 消息内容
-   - timestamp: 发送时间
+### 2. 启动后端
 
-## 系统架构
-1. **前端**：用户界面，采用 Vue3，使用 WebSocket 与后端实时通信。
-2. **后端**：Spring Boot，负责用户管理、聊天室管理、消息推送等。
-3. **数据库**：MySQL 存储用户数据、聊天记录等信息。
+```bash
+cd chat-backend
 
-## 安全与性能
-- 使用 JWT 或 Session 管理用户会话。
-- 对敏感信息（如密码）进行加密。
-- 对聊天记录进行分页查询，避免数据库查询过于耗时。
+# 方式1：直接运行
+mvn spring-boot:run
 
-## 任务分工
-1. 人员1：前端 - 用户注册、登录、登出模块
-2. 人员2：前端 - 聊天界面与消息显示
-3. 人员3：后端 - 用户管理与数据存储
-4. 人员4：后端 - 聊天记录与 WebSocket 实现
-5. 人员5：全栈 - 数据库设计与配置管理
+# 方式2：打包后运行
+mvn clean package
+java -jar target/chat-backend-1.0.0.jar
+```
 
-## 人员1前端实现
-- 位于 `frontend/` 下的静态模块，使用 CDN 方式引入 Vue3、Vue Router 4、Vuex 4，无需构建工具即可运行。
-- 包含 `AuthLayout`、`RegisterView`、`LoginView` 三个界面单元，通过 `router-view` 切换，注册/登录表单在提交前做基础字段校验。
-- Vuex `auth` 模块封装注册、登录、登出逻辑，调用 `frontend/src/services/authService.js` 的 `/api/auth/register`、`/api/auth/login`、`/api/auth/logout` 接口，成功后将 token/user 缓存到 `localStorage` 以保持会话。
-- 组件与布局在 `frontend/src/styles/global.css` 中定义了现代化配色与响应式样式，确保注册登录模块在不同设备上手感一致。
-- 要运行该模块，可用任意支持 ES 模块的静态服务器（如 `npx http-server frontend` 或 `python -m http.server --directory frontend 4173`），并保证它与 Spring Boot 后端共享同一个 `chat` 数据库、具备 `/api/auth` 端点以完成用户认证生命周期。
+后端将在 `http://localhost:8080` 启动。
 
-## 开发工具与环境
-- **IDE**：IntelliJ IDEA 或 VS Code
-- **JDK**：19.0.2
-- **数据库**：MySQL 8.x
-- **前端**：Vue3，Vite，Vue Router，Vuex
-- **后端**：Spring Boot 2.6，Spring Security，Spring WebSocket
-- **版本控制**：Git，GitHub
+### 3. 启动前端
+
+```bash
+cd chat-frontend
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+```
+
+前端将在 `http://localhost:5173` 启动。
+
+### 4. 测试账户
+
+使用数据库初始化脚本的测试账户：
+- **用户名**：admin 或 user1 或 user2
+- **密码**：test123
+
+## API 接口文档
+
+### 认证相关
+
+#### 注册
+```
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "username": "newuser",
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+#### 登录
+```
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "test123"
+}
+
+Response:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "user": {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@example.com",
+      "nickname": "Administrator",
+      "avatar": null
+    }
+  }
+}
+```
+
+#### 登出
+```
+POST /api/auth/logout
+Authorization: Bearer {token}
+```
+
+### 频道管理
+
+#### 获取所有频道
+```
+GET /api/channel/list
+```
+
+#### 获取用户加入的频道
+```
+GET /api/channel/my-channels
+Authorization: Bearer {token}
+```
+
+#### 创建频道
+```
+POST /api/channel
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "general",
+  "description": "General discussion"
+}
+```
+
+#### 加入频道
+```
+POST /api/channel/{channelId}/join
+Authorization: Bearer {token}
+```
+
+#### 离开频道
+```
+POST /api/channel/{channelId}/leave
+Authorization: Bearer {token}
+```
+
+#### 获取频道成员
+```
+GET /api/channel/{channelId}/members
+```
+
+### 消息管理
+
+#### 获取频道消息
+```
+GET /api/message/channel/{channelId}?limit=50
+```
+
+#### 获取私聊消息
+```
+GET /api/message/private/{userId}?limit=50
+Authorization: Bearer {token}
+```
+
+#### 发送消息（REST备用接口）
+```
+POST /api/message
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "type": "group",
+  "channelId": 1,
+  "content": "Hello everyone!"
+}
+```
+
+或私聊：
+```
+{
+  "type": "private",
+  "receiverId": 2,
+  "content": "Hello user!"
+}
+```
+
+### WebSocket 实时通信
+
+#### 连接
+```
+ws://localhost:8080/api/ws/chat?token={JWT_TOKEN}
+```
+
+#### 发送群组消息
+```json
+{
+  "type": "group_message",
+  "channelId": 1,
+  "content": "Hello everyone!"
+}
+```
+
+#### 发送私聊消息
+```json
+{
+  "type": "private_message",
+  "receiverId": 2,
+  "content": "Hello user!"
+}
+```
+
+#### 心跳包（保持连接）
+```json
+{
+  "type": "ping"
+}
+```
+
+## 项目结构
+
+```
+chat-backend/
+├── src/main/java/com/chat/
+│   ├── controller/        # REST 控制器
+│   ├── service/           # 业务逻辑层
+│   ├── repository/        # 数据访问层
+│   ├── entity/            # JPA 实体
+│   ├── dto/               # 数据传输对象
+│   ├── websocket/         # WebSocket 处理
+│   ├── filter/            # JWT 认证过滤器
+│   ├── exception/         # 异常处理
+│   ├── util/              # 工具类
+│   └── config/            # 配置类
+
+chat-frontend/
+├── src/
+│   ├── pages/             # 页面组件
+│   ├── router/            # 路由配置
+│   ├── store/             # Vuex 状态管理
+│   ├── utils/             # 工具函数
+│   ├── styles/            # 全局样式
+│   ├── App.vue            # 根组件
+│   └── main.js            # 入口文件
+```
+
+## 技术栈
+
+### 后端
+- Spring Boot 3.2.5
+- Spring Data JPA
+- Spring WebSocket
+- MySQL 8.0
+- JWT (JJWT 0.12.3)
+- FastJSON2
+- Lombok
+
+### 前端
+- Vue 3.4+
+- Vite 5
+- Vue Router 4.2
+- Vuex 4.1
+- Axios 1.6
+- Element Plus 2.5
+
+## 核心功能实现
+
+### 1. JWT认证
+- TokenUtil: 生成和验证JWT令牌
+- JwtTokenFilter: 请求过滤和令牌验证
+- 令牌有效期：7天
+
+### 2. WebSocket 实时通信
+- 自动连接管理和重连机制
+- 心跳包保活
+- 群组消息广播
+- 私聊消息直达
+
+### 3. 数据库设计
+- TUser: 用户表
+- TChannel: 频道表
+- TUserChannel: 用户-频道关联表
+- TGroupMsg: 群组消息表
+- TPrivateMsg: 私聊消息表
+
+## 常见问题排查
+
+### WebSocket 连接失败
+- 检查后端是否正常运行
+- 确认JWT令牌有效
+- 检查浏览器开发工具的 Network 标签
+
+### 消息发送失败
+- 确认用户已加入该频道（群组消息）
+- 检查接收方用户ID是否正确（私聊）
+- 查看浏览器控制台的错误信息
+
+### 数据库连接错误
+- 检查 application.yml 中的数据库配置
+- 确认MySQL服务正常运行
+- 验证数据库用户名密码
+
+## 许可证
+
+MIT License

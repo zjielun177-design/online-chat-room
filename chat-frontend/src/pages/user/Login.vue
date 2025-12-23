@@ -59,14 +59,29 @@ const login = async () => {
       password: form.password
     })
 
-    store.commit('setToken', response.data.token)
-    store.commit('setUser', response.data.user)
+    console.log('登录响应:', response)
 
-    ElMessage.success('登录成功')
-    router.push('/chat')
+    // response 是 ApiResponse 对象: { code, message, data: { token, user } }
+    if (response.code === 200 && response.data) {
+      store.commit('setToken', response.data.token)
+      store.commit('setUser', response.data.user)
+      ElMessage.success('登录成功')
+      router.push('/chat')
+    } else {
+      ElMessage.error(response.message || '登录失败')
+    }
   } catch (error) {
     console.error('登录错误:', error)
-    const errorMsg = error.message || error?.data?.message || '登录失败'
+    let errorMsg = '登录失败'
+
+    if (error.message) {
+      errorMsg = error.message
+    } else if (error.message) {
+      errorMsg = error.message
+    } else if (typeof error === 'object' && error.message) {
+      errorMsg = error.message
+    }
+
     ElMessage.error(errorMsg)
   }
 }

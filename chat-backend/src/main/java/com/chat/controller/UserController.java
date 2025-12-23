@@ -123,4 +123,12 @@ public class UserController {
         }
     }
 
+    /**
+     * 用户登出
+     */
+    @PostMapping("/logout")
+    public ApiResponse<String> logout() {
+        return ApiResponse.success("登出成功");
+    }
+
 }

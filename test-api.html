@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>API 诊断</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test { margin: 20px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .info { background-color: #d1ecf1; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>聊天室API诊断工具</h1>
+
+    <div class="test info">
+        <h3>1. 测试后端连接</h3>
+        <button onclick="testBackend()">测试</button>
+        <pre id="backendResult"></pre>
+    </div>
+
+    <div class="test info">
+        <h3>2. 测试登录API</h3>
+        <button onclick="testLogin()">测试登录</button>
+        <pre id="loginResult"></pre>
+    </div>
+
+    <div class="test info">
+        <h3>3. 测试频道列表API</h3>
+        <button onclick="testChannels()">测试频道</button>
+        <pre id="channelResult"></pre>
+    </div>
+
+    <div class="test info">
+        <h3>4. 数据库检查（需要在服务器上运行）</h3>
+        <pre>mysql -u root -proot -e "use chat; select id, name from t_channel;"</pre>
+    </div>
+
+    <script>
+        async function testBackend() {
+            const result = document.getElementById('backendResult');
+            try {
+                const res = await fetch('http://localhost:8080/health');
+                const data = await res.json();
+                result.textContent = JSON.stringify(data, null, 2);
+                result.parentElement.className = 'test success';
+            } catch (e) {
+                result.textContent = '错误: ' + e.message;
+                result.parentElement.className = 'test error';
+            }
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('loginResult');
+            try {
+                const res = await fetch('http://localhost:8080/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: '123456' })
+                });
+                const data = await res.json();
+                result.textContent = JSON.stringify(data, null, 2);
+
+                if (data.code === 200) {
+                    result.parentElement.className = 'test success';
+                    // 保存 token
+                    window.token = data.data.token;
+                    alert('登录成功！Token 已保存，可以测试频道API了');
+                } else {
+                    result.parentElement.className = 'test error';
+                }
+            } catch (e) {
+                result.textContent = '错误: ' + e.message;
+                result.parentElement.className = 'test error';
+            }
+        }
+
+        async function testChannels() {
+            const result = document.getElementById('channelResult');
+            if (!window.token) {
+                result.textContent = '错误: 需要先登录获取 token';
+                result.parentElement.className = 'test error';
+                return;
+            }
+
+            try {
+                const res = await fetch('http://localhost:8080/channel/list', {
+                    headers: { 'Authorization': `Bearer ${window.token}` }
+                });
+                const data = await res.json();
+                result.textContent = JSON.stringify(data, null, 2);
+
+                if (data.code === 200 && data.data.length > 0) {
+                    result.parentElement.className = 'test success';
+                } else {
+                    result.parentElement.className = 'test info';
+                }
+            } catch (e) {
+                result.textContent = '错误: ' + e.message;
+                result.parentElement.className = 'test error';
+            }
+        }
+    </script>
+</body>
+</html>

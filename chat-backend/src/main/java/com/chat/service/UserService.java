@@ -9,6 +9,11 @@ import com.chat.entity.TUser;
 public interface UserService {
 
     /**
+     * 根据用户ID查询用户
+     */
+    TUser getUserById(Long userId);
+
+    /**
      * 根据用户名查询用户
      */
     TUser getUserByUsername(String username);
