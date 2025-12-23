@@ -3,8 +3,10 @@ package com.chat.websocket;
 import com.alibaba.fastjson2.JSON;
 import com.chat.entity.TGroupMsg;
 import com.chat.entity.TPrivateMsg;
+import com.chat.entity.TUser;
 import com.chat.service.ChannelService;
 import com.chat.service.MessageService;
+import com.chat.service.UserService;
 import com.chat.util.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -28,6 +30,9 @@ public class ChatWebSocketServer extends TextWebSocketHandler {
 
     @Autowired
     private ChannelService channelService;
+
+    @Autowired
+    private UserService userService;
 
     /**
      * 连接建立时的处理
@@ -114,10 +119,13 @@ public class ChatWebSocketServer extends TextWebSocketHandler {
         TGroupMsg dbMsg = messageService.saveGroupMessage(userId, channelId, content);
 
         // 构建响应消息
+        TUser sender = userService.getUserById(userId);
         Map<String, Object> response = new HashMap<>();
         response.put("type", "group_message");
         response.put("id", dbMsg.getId());
         response.put("senderId", dbMsg.getSenderId());
+        response.put("senderName", formatDisplayName(sender));
+        response.put("senderAvatar", sender != null ? sender.getAvatar() : "");
         response.put("channelId", dbMsg.getChannelId());
         response.put("content", dbMsg.getContent());
         response.put("sendTime", dbMsg.getSendTime().toString());
@@ -149,10 +157,13 @@ public class ChatWebSocketServer extends TextWebSocketHandler {
         TPrivateMsg dbMsg = messageService.savePrivateMessage(userId, receiverId, content);
 
         // 构建响应消息
+        TUser sender = userService.getUserById(userId);
         Map<String, Object> response = new HashMap<>();
         response.put("type", "private_message");
         response.put("id", dbMsg.getId());
         response.put("senderId", dbMsg.getSenderId());
+        response.put("senderName", formatDisplayName(sender));
+        response.put("senderAvatar", sender != null ? sender.getAvatar() : "");
         response.put("receiverId", dbMsg.getReceiverId());
         response.put("content", dbMsg.getContent());
         response.put("sendTime", dbMsg.getSendTime().toString());
@@ -197,5 +208,16 @@ public class ChatWebSocketServer extends TextWebSocketHandler {
             System.err.println("提取用户ID失败: " + e.getMessage());
         }
         return null;
+    }
+
+    private String formatDisplayName(TUser user) {
+        if (user == null) {
+            return "Unknown";
+        }
+        String nickname = user.getNickname();
+        if (nickname != null && !nickname.trim().isEmpty()) {
+            return nickname.trim();
+        }
+        return user.getUsername() != null ? user.getUsername() : "Unknown";
     }
 }

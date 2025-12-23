@@ -1,6 +1,7 @@
 package com.chat.service;
 
 import com.chat.dto.RegisterRequest;
+import com.chat.dto.UpdateProfileRequest;
 import com.chat.entity.TUser;
 
 /**
@@ -29,9 +30,13 @@ public interface UserService {
     TUser registerUser(RegisterRequest request) throws Exception;
 
     /**
+     * 更新用户资料
+     */
+    TUser updateProfile(Long userId, UpdateProfileRequest request) throws Exception;
+
+    /**
      * 保存用户
      */
     TUser save(TUser user);
 
 }
-

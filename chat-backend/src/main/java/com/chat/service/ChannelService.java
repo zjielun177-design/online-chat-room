@@ -2,6 +2,7 @@ package com.chat.service;
 
 import com.chat.dto.ChannelDTO;
 import com.chat.entity.TChannel;
+import com.chat.entity.TUser;
 
 import java.util.List;
 
@@ -31,9 +32,14 @@ public interface ChannelService {
     List<TChannel> getUserChannels(Long userId);
 
     /**
-     * 获取频道的所有成员ID
+     * 获取频道的成员ID
      */
     List<Long> getChannelMembers(Long channelId);
+
+    /**
+     * 获取频道的成员信息
+     */
+    List<TUser> getChannelUsers(Long channelId);
 
     /**
      * 用户加入频道
@@ -46,7 +52,7 @@ public interface ChannelService {
     void leaveChannel(Long userId, Long channelId);
 
     /**
-     * 检查用户是否在频道中
+     * 判断用户是否在频道中
      */
     boolean isUserInChannel(Long userId, Long channelId);
 

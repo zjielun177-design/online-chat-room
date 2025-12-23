@@ -1,15 +1,18 @@
 package com.chat.service.impl;
 
 import com.chat.entity.TChannel;
+import com.chat.entity.TUser;
 import com.chat.entity.TUserChannel;
 import com.chat.repository.ChannelRepository;
 import com.chat.repository.UserChannelRepository;
+import com.chat.repository.UserRepository;
 import com.chat.service.ChannelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,6 +27,9 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Autowired
     private UserChannelRepository userChannelRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     @Transactional
@@ -75,6 +81,16 @@ public class ChannelServiceImpl implements ChannelService {
         return userChannels.stream()
                 .map(TUserChannel::getUserId)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TUser> getChannelUsers(Long channelId) {
+        List<TUserChannel> userChannels = userChannelRepository.findByChannelId(channelId);
+        List<TUser> users = new ArrayList<>();
+        for (TUserChannel uc : userChannels) {
+            userRepository.findById(uc.getUserId()).ifPresent(users::add);
+        }
+        return users;
     }
 
     @Override

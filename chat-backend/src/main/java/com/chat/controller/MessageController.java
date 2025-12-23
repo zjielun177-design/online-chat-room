@@ -154,7 +154,7 @@ public class MessageController {
                 .id(msg.getId())
                 .type("group")
                 .senderId(msg.getSenderId())
-                .senderName(sender != null ? sender.getUsername() : "Unknown")
+                .senderName(buildDisplayName(sender))
                 .senderAvatar(sender != null ? sender.getAvatar() : "")
                 .channelId(msg.getChannelId())
                 .content(msg.getContent())
@@ -168,12 +168,23 @@ public class MessageController {
                 .id(msg.getId())
                 .type("private")
                 .senderId(msg.getSenderId())
-                .senderName(sender != null ? sender.getUsername() : "Unknown")
+                .senderName(buildDisplayName(sender))
                 .senderAvatar(sender != null ? sender.getAvatar() : "")
                 .receiverId(msg.getReceiverId())
                 .content(msg.getContent())
                 .sendTime(msg.getSendTime())
                 .build();
+    }
+
+    private String buildDisplayName(TUser user) {
+        if (user == null) {
+            return "Unknown";
+        }
+        String nickname = user.getNickname();
+        if (nickname != null && !nickname.trim().isEmpty()) {
+            return nickname.trim();
+        }
+        return user.getUsername() != null ? user.getUsername() : "Unknown";
     }
 
     /**

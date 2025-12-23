@@ -1,14 +1,23 @@
 <template>
-  <div class="chat-container">
+  <div class="chat-layout">
     <div class="chat-sidebar">
-      <div class="user-info">
-        <div class="avatar">{{ user?.username?.[0].toUpperCase() }}</div>
-        <div class="info">
-          <p class="username">{{ user?.username }}</p>
-          <button @click="logout" class="logout-btn">登出</button>
+      <div class="sidebar-header">
+        <div class="avatar">{{ avatarInitial }}</div>
+        <div class="user-info">
+          <p class="display-name">{{ displayName }}</p>
+          <p class="user-email" v-if="user?.email">{{ user.email }}</p>
+          <div class="actions">
+            <el-button type="text" size="small" @click="profileDialogVisible = true">
+              编辑资料
+            </el-button>
+            <el-button type="text" size="small" class="logout-link" @click="logout">
+              登出
+            </el-button>
+          </div>
         </div>
       </div>
-      <div class="channels">
+
+      <div class="channel-section">
         <h3>频道</h3>
         <div class="channel-list">
           <div
@@ -17,7 +26,31 @@
             :class="['channel-item', { active: currentChannel?.id === channel.id }]"
             @click="selectChannel(channel)"
           >
-            # {{ channel.name }}
+            <div># {{ channel.name }}</div>
+            <span class="member-count">{{ channel.memberCount || 0 }} 人</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="members-section" v-if="channelMembers.length">
+        <h3>频道成员</h3>
+        <div class="member-list">
+          <div
+            v-for="member in channelMembers"
+            :key="member.id"
+            :class="[
+              'member-item',
+              {
+                active:
+                  activeConversationType === 'private' && privatePeer?.id === member.id
+              }
+            ]"
+            @click="startPrivateChat(member)"
+          >
+            <div class="member-info">
+              <span class="member-name">{{ member.nickname || member.username }}</span>
+              <span class="member-meta" v-if="member.id === user?.id">(我)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -25,8 +58,23 @@
 
     <div class="chat-main">
       <div class="chat-header">
-        <h2>{{ currentChannel?.name || '选择频道' }}</h2>
+        <div>
+          <h2 v-if="activeConversationType === 'group'">
+            {{ currentChannel?.name || '请选择频道' }}
+          </h2>
+          <h2 v-else>与 {{ privatePeerDisplayName }} 私聊</h2>
+          <p
+            class="subline"
+            v-if="activeConversationType === 'group' && currentChannel?.description"
+          >
+            {{ currentChannel.description }}
+          </p>
+        </div>
+        <el-button type="text" size="small" @click="historyDialogVisible = true">
+          聊天记录
+        </el-button>
       </div>
+
       <div class="chat-messages">
         <div
           v-for="msg in messages"
@@ -34,61 +82,179 @@
           :class="['message', { own: msg.senderId === user?.id }]"
         >
           <div class="message-header">
-            <span class="author">{{ msg.senderName }}</span>
+            <span class="author">{{ msg.senderName || '未知用户' }}</span>
             <span class="time">{{ formatTime(msg.sendTime) }}</span>
           </div>
           <div class="message-content">{{ msg.content }}</div>
         </div>
       </div>
+
       <div class="chat-input">
         <el-input
           v-model="inputMessage"
-          placeholder="输入消息..."
-          @keyup.enter="sendMessage"
+          :placeholder="activeConversationType === 'group' ? '在当前频道发言...' : '在私聊中输入...'"
           clearable
+          @keyup.enter="sendMessage"
         />
-        <button @click="sendMessage" class="send-btn">发送</button>
+        <button class="send-btn" @click="sendMessage">发送</button>
       </div>
     </div>
+
+    <ProfileDialog
+      :model-value="profileDialogVisible"
+      :user="user"
+      @update:modelValue="profileDialogVisible = $event"
+      @saved="handleProfileSaved"
+    />
+    <HistoryDialog
+      :model-value="historyDialogVisible"
+      :type="activeConversationType"
+      :channel-id="currentChannel?.id"
+      :peer-id="privatePeer?.id"
+      :channel-name="currentChannel?.name"
+      :peer-name="privatePeerDisplayName"
+      @update:modelValue="historyDialogVisible = $event"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
+import { ElMessage } from 'element-plus'
 import websocket from '../../utils/websocket'
 import request from '../../utils/request'
-import { ElMessage } from 'element-plus'
+import ProfileDialog from './ProfileDialog.vue'
+import HistoryDialog from './HistoryDialog.vue'
 
 const router = useRouter()
 const store = useStore()
 
+const profileDialogVisible = ref(false)
+const historyDialogVisible = ref(false)
 const inputMessage = ref('')
+
+const user = computed(() => store.state.user)
 const channels = computed(() => store.state.channels)
 const currentChannel = computed(() => store.state.currentChannel)
 const messages = computed(() => store.state.messages)
-const user = computed(() => store.state.user)
+const activeConversationType = ref('group')
+const privatePeer = ref(null)
+const channelMembers = ref([])
+const privatePeerDisplayName = computed(() => {
+  const target = privatePeer.value
+  if (!target) return ''
+  const nickname = target.nickname?.trim()
+  return nickname || target.username || '未知用户'
+})
 
-const selectChannel = (channel) => {
+const displayName = computed(() => {
+  const target = user.value
+  if (!target) return '未登录用户'
+  const nickname = target.nickname?.trim()
+  return nickname || target.username || '未知用户'
+})
+
+const avatarInitial = computed(() => {
+  const next = displayName.value.trim()
+  return next ? next[0].toUpperCase() : 'U'
+})
+
+const selectChannel = async (channel) => {
+  if (!channel) return
+  activeConversationType.value = 'group'
+  privatePeer.value = null
   store.commit('setCurrentChannel', channel)
-  loadMessages(channel.id)
+  await loadMessages(channel.id)
+  await loadChannelMembers(channel.id)
 }
 
 const loadMessages = async (channelId) => {
   try {
     const response = await request.get(`/message/channel/${channelId}`)
-    // response 是 ApiResponse 对象: { code, message, data: [...] }
-    console.log('消息API响应:', response)
-    store.commit('setMessages', response.data || [])
+    store.commit('setMessages', response?.data || [])
   } catch (error) {
-    console.error('加载消息失败:', error)
-    ElMessage.error('加载消息失败')
+    console.error('加载频道消息失败', error)
+    ElMessage.error('加载消息失败，请稍候再试')
   }
+}
+
+const loadChannelMembers = async (channelId) => {
+  if (!channelId) {
+    channelMembers.value = []
+    return
+  }
+  try {
+    const response = await request.get(`/channel/${channelId}/members-detail`)
+    channelMembers.value = response?.data || []
+  } catch (error) {
+    console.error('加载频道成员失败', error)
+    channelMembers.value = []
+  }
+}
+
+const loadChannels = async () => {
+  try {
+    const response = await request.get('/channel/list')
+    const list = response?.data || []
+    store.commit('setChannels', list)
+    if (list.length > 0) {
+      await selectChannel(list[0])
+    } else {
+      store.commit('setCurrentChannel', null)
+      store.commit('setMessages', [])
+      channelMembers.value = []
+    }
+  } catch (error) {
+    console.error('加载频道列表失败', error)
+    ElMessage.error('频道加载失败，请刷新重试')
+  }
+}
+
+const loadPrivateMessages = async (peerId) => {
+  try {
+    const response = await request.get(`/message/private/${peerId}`)
+    store.commit('setMessages', response?.data || [])
+  } catch (error) {
+    console.error('加载私聊消息失败', error)
+    ElMessage.error('私聊记录加载失败')
+    store.commit('setMessages', [])
+  }
+}
+
+const startPrivateChat = async (member) => {
+  if (!member || member.id === user.value?.id) {
+    return
+  }
+  activeConversationType.value = 'private'
+  privatePeer.value = member
+  store.commit('setMessages', [])
+  await loadPrivateMessages(member.id)
 }
 
 const sendMessage = () => {
   if (!inputMessage.value.trim()) {
+    return
+  }
+  if (!websocket.isConnected()) {
+    ElMessage.error('正在连接中，稍后再试')
+    return
+  }
+
+  const content = inputMessage.value.trim()
+
+  if (activeConversationType.value === 'private') {
+    if (!privatePeer.value) {
+      ElMessage.error('请选择私聊对象')
+      return
+    }
+    websocket.send({
+      type: 'private_message',
+      receiverId: privatePeer.value.id,
+      content
+    })
+    inputMessage.value = ''
     return
   }
 
@@ -97,13 +263,11 @@ const sendMessage = () => {
     return
   }
 
-  const message = {
+  websocket.send({
     type: 'group_message',
     channelId: currentChannel.value.id,
-    content: inputMessage.value
-  }
-
-  websocket.send(message)
+    content
+  })
   inputMessage.value = ''
 }
 
@@ -111,7 +275,7 @@ const logout = async () => {
   try {
     await request.post('/auth/logout')
   } catch (error) {
-    console.error('登出错误:', error)
+    console.error('登出异常', error)
   }
 
   store.commit('setToken', null)
@@ -124,58 +288,52 @@ const formatTime = (time) => {
   if (!time) return ''
   try {
     const date = new Date(time)
-    return date.toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (e) {
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  } catch (err) {
     return time
   }
 }
 
-const loadChannels = async () => {
-  try {
-    console.log('开始加载频道...');
-    const response = await request.get('/channel/list')
-    // response 是 ApiResponse 对象: { code, message, data: [...] }
-    console.log('频道API原始响应:', response)
-    console.log('频道API响应类型:', typeof response)
-    console.log('是否有 data 字段:', 'data' in response)
-    const channelList = response.data || []
-    console.log('提取的频道列表:', channelList)
-    store.commit('setChannels', channelList)
-    console.log('Vuex 中的频道已更新:', store.state.channels)
-    // 如果有频道，自动选择第一个
-    if (channelList && channelList.length > 0) {
-      console.log('自动选择第一个频道:', channelList[0].name)
-      selectChannel(channelList[0])
-    } else {
-      console.warn('频道列表为空!')
-    }
-  } catch (error) {
-    console.error('加载频道失败:', error)
-    console.error('错误详情:', error.message)
-    ElMessage.error('加载频道失败')
+const handleProfileSaved = (updatedUser) => {
+  if (updatedUser) {
+    store.commit('setUser', updatedUser)
   }
 }
 
-// 设置WebSocket消息处理器
 websocket.onMessage = (message) => {
-  console.log('收到WebSocket消息:', message)
-  if (message.type === 'group_message' && message.channelId === currentChannel.value?.id) {
+  if (
+    message.type === 'group_message' &&
+    activeConversationType.value === 'group' &&
+    message.channelId === currentChannel.value?.id
+  ) {
     store.commit('addMessage', {
       id: message.id,
       senderId: message.senderId,
-      senderName: message.senderName,
+      senderName: message.senderName || '未知用户',
       content: message.content,
       sendTime: message.sendTime,
       channelId: message.channelId
     })
+    return
+  }
+
+  if (message.type === 'private_message' && activeConversationType.value === 'private' && privatePeer.value) {
+    const peerId = privatePeer.value.id
+    if (message.senderId === peerId || message.receiverId === peerId) {
+      store.commit('addMessage', {
+        id: message.id,
+        senderId: message.senderId,
+        senderName: message.senderName || '未知用户',
+        content: message.content,
+        sendTime: message.sendTime,
+        receiverId: message.receiverId
+      })
+    }
   }
 }
 
 onMounted(() => {
-  if (!user.value || !store.state.token) {
+  if (!store.state.token || !user.value) {
     router.push('/login')
     return
   }
@@ -183,107 +341,144 @@ onMounted(() => {
   loadChannels()
   websocket.connect(store.state.token)
 })
-
-onUnmounted(() => {
-  // 保持连接，只在登出时关闭
-})
 </script>
 
 <style scoped>
-.chat-container {
+.chat-layout {
   display: flex;
   height: 100vh;
   background: #f5f5f5;
 }
 
 .chat-sidebar {
-  width: 250px;
+  width: 260px;
   background: #fff;
-  border-right: 1px solid #ddd;
+  border-right: 1px solid #e6e6e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.user-info {
-  padding: 15px;
-  border-bottom: 1px solid #ddd;
+.sidebar-header {
   display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #e6e6e6;
   align-items: center;
-  gap: 10px;
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: #667eea;
-  color: white;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  font-size: 18px;
 }
 
-.info {
+.user-info {
   flex: 1;
 }
 
-.username {
+.display-name {
   margin: 0;
   font-weight: bold;
-  color: #333;
 }
 
-.logout-btn {
-  padding: 4px 8px;
-  background: #f56c6c;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+.user-email {
+  margin: 2px 0 6px;
   font-size: 12px;
-  width: 100%;
-  margin-top: 5px;
+  color: #999;
 }
 
-.logout-btn:hover {
-  background: #f78989;
+.actions {
+  display: flex;
+  gap: 4px;
 }
 
-.channels {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
+.logout-link {
+  color: #f56c6c;
 }
 
-.channels h3 {
-  margin: 0 0 10px 0;
-  color: #333;
+.channel-section {
+  padding: 12px 16px;
+}
+
+.channel-section h3 {
+  margin: 0 0 12px;
   font-size: 14px;
+  color: #555;
 }
 
 .channel-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .channel-item {
-  padding: 8px 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fafafa;
   cursor: pointer;
-  border-radius: 4px;
-  color: #666;
-  transition: all 0.3s;
-}
-
-.channel-item:hover {
-  background: #f0f0f0;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .channel-item.active {
   background: #667eea;
-  color: white;
+  color: #fff;
+}
+
+.member-count {
+  font-size: 12px;
+  color: inherit;
+}
+
+.members-section {
+  padding: 0 16px 12px;
+}
+
+.members-section h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #555;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.member-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f8f8f8;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.member-item.active {
+  background: #e1eaff;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.member-meta {
+  color: #999;
+  font-size: 12px;
 }
 
 .chat-main {
@@ -293,14 +488,24 @@ onUnmounted(() => {
 }
 
 .chat-header {
+  background: #fff;
   padding: 20px;
-  border-bottom: 1px solid #ddd;
-  background: white;
+  border-bottom: 1px solid #e6e6e6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .chat-header h2 {
   margin: 0;
+  font-size: 20px;
   color: #333;
+}
+
+.subline {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #888;
 }
 
 .chat-messages {
@@ -309,53 +514,54 @@ onUnmounted(() => {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  background: #fefefe;
 }
 
 .message {
-  background: white;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .message.own {
   align-self: flex-end;
   background: #667eea;
   color: white;
-  max-width: 70%;
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  margin-bottom: 5px;
   color: #999;
+  margin-bottom: 6px;
 }
 
 .message.own .message-header {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .message-content {
-  word-wrap: break-word;
+  word-break: break-word;
 }
 
 .chat-input {
-  padding: 20px;
-  background: white;
-  border-top: 1px solid #ddd;
+  padding: 16px;
+  background: #fff;
+  border-top: 1px solid #e6e6e6;
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .send-btn {
-  padding: 10px 20px;
+  min-width: 100px;
+  border: none;
+  border-radius: 6px;
   background: #667eea;
   color: white;
-  border: none;
-  border-radius: 4px;
+  padding: 10px 16px;
   cursor: pointer;
 }
 

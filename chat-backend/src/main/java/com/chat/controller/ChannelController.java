@@ -2,7 +2,9 @@ package com.chat.controller;
 
 import com.chat.dto.ApiResponse;
 import com.chat.dto.ChannelDTO;
+import com.chat.dto.UserVO;
 import com.chat.entity.TChannel;
+import com.chat.entity.TUser;
 import com.chat.service.ChannelService;
 import com.chat.util.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,6 +110,23 @@ public class ChannelController {
             return ApiResponse.success(members);
         } catch (Exception e) {
             return ApiResponse.error(500, "获取频道成员失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/{channelId}/members-detail")
+    public ApiResponse<List<UserVO>> getChannelMembersDetail(
+            @PathVariable Long channelId,
+            @RequestHeader("Authorization") String token) {
+        try {
+            String tokenValue = token.replace("Bearer ", "");
+            TokenUtil.getUserIdFromToken(tokenValue);
+            List<TUser> members = channelService.getChannelUsers(channelId);
+            List<UserVO> dtos = members.stream()
+                    .map(this::buildUserVO)
+                    .collect(Collectors.toList());
+            return ApiResponse.success(dtos);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "获取频道成员信息失败：" + e.getMessage());
         }
     }
 
@@ -219,6 +238,16 @@ public class ChannelController {
                 .createTime(channel.getCreateTime())
                 .updateTime(channel.getUpdateTime())
                 .memberCount(memberCount)
+                .build();
+    }
+
+    private UserVO buildUserVO(TUser user) {
+        return UserVO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .avatar(user.getAvatar())
                 .build();
     }
 
