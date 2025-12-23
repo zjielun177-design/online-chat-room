@@ -1,12 +1,11 @@
 package com.chat.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chat.dto.RegisterRequest;
 import com.chat.entity.TUser;
-import com.chat.mapper.UserMapper;
+import com.chat.repository.UserRepository;
 import com.chat.service.UserService;
 import com.chat.util.PasswordUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -15,16 +14,19 @@ import java.time.LocalDateTime;
  * 用户服务实现类
  */
 @Service
-public class UserServiceImpl extends ServiceImpl<UserMapper, TUser> implements UserService {
+public class UserServiceImpl implements UserService {
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public TUser getUserByUsername(String username) {
-        return this.baseMapper.selectOne(new QueryWrapper<TUser>().eq("username", username));
+        return userRepository.findByUsername(username);
     }
 
     @Override
     public TUser getUserByEmail(String email) {
-        return this.baseMapper.selectOne(new QueryWrapper<TUser>().eq("email", email));
+        return userRepository.findByEmail(email);
     }
 
     @Override
@@ -53,8 +55,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, TUser> implements U
                 .build();
 
         // 保存用户
-        this.baseMapper.insert(user);
-        return user;
+        return userRepository.save(user);
+    }
+
+    @Override
+    public TUser save(TUser user) {
+        return userRepository.save(user);
     }
 
 }
+

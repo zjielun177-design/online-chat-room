@@ -1,14 +1,11 @@
 package com.chat.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -18,27 +15,30 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("t_user")
-public class TUser implements Serializable {
+@Entity
+@Table(name = "t_user")
+public class TUser {
 
-    private static final long serialVersionUID = 1L;
-
-    @TableId(value = "id", type = IdType.AUTO)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
      * 用户名，唯一
      */
+    @Column(unique = true, nullable = false)
     private String username;
 
     /**
      * 邮箱，唯一
      */
+    @Column(unique = true, nullable = false)
     private String email;
 
     /**
      * 密码（加密后）
      */
+    @Column(nullable = false)
     private String password;
 
     /**
@@ -54,11 +54,14 @@ public class TUser implements Serializable {
     /**
      * 创建时间
      */
+    @Column(nullable = false)
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      */
+    @Column(nullable = false)
     private LocalDateTime updateTime;
 
 }
+
