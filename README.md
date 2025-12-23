@@ -70,6 +70,13 @@
 4. 人员4：后端 - 聊天记录与 WebSocket 实现
 5. 人员5：全栈 - 数据库设计与配置管理
 
+## 人员1前端实现
+- 位于 `frontend/` 下的静态模块，使用 CDN 方式引入 Vue3、Vue Router 4、Vuex 4，无需构建工具即可运行。
+- 包含 `AuthLayout`、`RegisterView`、`LoginView` 三个界面单元，通过 `router-view` 切换，注册/登录表单在提交前做基础字段校验。
+- Vuex `auth` 模块封装注册、登录、登出逻辑，调用 `frontend/src/services/authService.js` 的 `/api/auth/register`、`/api/auth/login`、`/api/auth/logout` 接口，成功后将 token/user 缓存到 `localStorage` 以保持会话。
+- 组件与布局在 `frontend/src/styles/global.css` 中定义了现代化配色与响应式样式，确保注册登录模块在不同设备上手感一致。
+- 要运行该模块，可用任意支持 ES 模块的静态服务器（如 `npx http-server frontend` 或 `python -m http.server --directory frontend 4173`），并保证它与 Spring Boot 后端共享同一个 `chat` 数据库、具备 `/api/auth` 端点以完成用户认证生命周期。
+
 ## 开发工具与环境
 - **IDE**：IntelliJ IDEA 或 VS Code
 - **JDK**：19.0.2

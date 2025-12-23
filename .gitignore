@@ -1,0 +1,31 @@
+# 后端
+chat-backend/target/
+chat-backend/.idea/
+chat-backend/*.iml
+chat-backend/.DS_Store
+
+# 前端
+chat-frontend/node_modules/
+chat-frontend/dist/
+chat-frontend/.vite/
+chat-frontend/.DS_Store
+chat-frontend/*.log
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+
+# 环境文件
+.env
+.env.local
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
